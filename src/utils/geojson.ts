@@ -1,4 +1,4 @@
-import type { MarkerPoint } from '../types/zone';
+import type { MarkerPoint, Zone } from '../types/zone';
 
 export function buildLineFeature(
   markers: MarkerPoint[],
@@ -44,4 +44,32 @@ export function buildPointsFeatureCollection(
       properties: { id: m.id },
     })),
   };
+}
+
+export function buildZonesGeoJSON(zones: Zone[]): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+
+  for (const zone of zones) {
+    const line = buildLineFeature(zone.markers, zone.isClosed);
+    if (line) {
+      features.push({ ...line, id: zone.id, properties: { zoneId: zone.id } });
+    }
+
+    if (zone.isClosed) {
+      const polygon = buildPolygonFeature(zone.markers);
+      if (polygon) {
+        features.push({ ...polygon, id: zone.id, properties: { zoneId: zone.id } });
+      }
+    }
+
+    for (const m of zone.markers) {
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [m.lng, m.lat] },
+        properties: { id: m.id, zoneId: zone.id },
+      });
+    }
+  }
+
+  return { type: 'FeatureCollection', features };
 }

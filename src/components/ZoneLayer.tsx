@@ -1,27 +1,22 @@
 import { useEffect } from 'react';
 import maplibregl from 'maplibre-gl';
 import { LAYER_IDS, SOURCE_IDS } from '../constants/map';
+import type { Zone } from '../types/zone';
+import { buildZonesGeoJSON } from '../utils/geojson';
 
 interface Props {
   map: maplibregl.Map | null;
-  lineFeature: GeoJSON.Feature<GeoJSON.LineString> | null;
-  polygonFeature: GeoJSON.Feature<GeoJSON.Polygon> | null;
-  pointsFeature: GeoJSON.FeatureCollection<GeoJSON.Point>;
+  zones: Zone[];
 }
 
-export function ZoneLayer({ map, lineFeature, polygonFeature, pointsFeature }: Props) {
+export function ZoneLayer({ map, zones }: Props) {
   // Effect 1: register source and layers once when map becomes available
   useEffect(() => {
     if (!map) return;
 
-    const emptyCollection: GeoJSON.FeatureCollection = {
-      type: 'FeatureCollection',
-      features: [],
-    };
-
     map.addSource(SOURCE_IDS.ZONE, {
       type: 'geojson',
-      data: emptyCollection,
+      data: { type: 'FeatureCollection', features: [] },
     });
 
     map.addLayer({
@@ -41,7 +36,8 @@ export function ZoneLayer({ map, lineFeature, polygonFeature, pointsFeature }: P
       source: SOURCE_IDS.ZONE,
       filter: ['==', '$type', 'LineString'],
       paint: {
-        'line-color': '#2563eb',
+        // Colour driven by feature state so only the hovered zone highlights
+        'line-color': ['case', ['boolean', ['feature-state', 'hover'], false], '#f97316', '#2563eb'],
         'line-width': 2,
       },
     });
@@ -65,7 +61,7 @@ export function ZoneLayer({ map, lineFeature, polygonFeature, pointsFeature }: P
       paint: {
         'circle-radius': 4,
         'circle-color': '#2563eb',
-        'circle-opacity': 0,  // invisible — exists only for click targeting
+        'circle-opacity': 0, // invisible — exists only for click targeting
       },
     });
 
@@ -78,23 +74,13 @@ export function ZoneLayer({ map, lineFeature, polygonFeature, pointsFeature }: P
     };
   }, [map]);
 
-  // Effect 2: update source data whenever derived GeoJSON changes
+  // Effect 2: update source data whenever zones change
   useEffect(() => {
     if (!map) return;
-
     const source = map.getSource(SOURCE_IDS.ZONE) as maplibregl.GeoJSONSource | undefined;
     if (!source) return;
-
-    const features: GeoJSON.Feature[] = [];
-    if (lineFeature) features.push(lineFeature);
-    if (polygonFeature) features.push(polygonFeature);
-    features.push(...pointsFeature.features);
-
-    source.setData({
-      type: 'FeatureCollection',
-      features,
-    });
-  }, [map, lineFeature, polygonFeature, pointsFeature]);
+    source.setData(buildZonesGeoJSON(zones));
+  }, [map, zones]);
 
   return null;
 }

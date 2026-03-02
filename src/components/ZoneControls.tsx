@@ -1,19 +1,27 @@
+import type { Zone } from '../types/zone';
+
 interface Props {
   closeZone: () => void;
-  clearZone: () => void;
+  clearAll: () => void;
   undoLast: () => void;
-  isClosed: boolean;
-  markerCount: number;
+  activeZone: Zone | null;
+  completedZoneCount: number;
 }
 
-function statusMessage(markerCount: number, isClosed: boolean): string {
-  if (isClosed) return 'Zone created! Click an edge to add a point, or drag points to reshape';
-  if (markerCount === 0) return 'Click the map to place your first point';
-  if (markerCount < 3) return 'Add at least 3 points to create a zone';
+function statusMessage(activeZone: Zone | null, completedZoneCount: number): string {
+  if (!activeZone) {
+    if (completedZoneCount === 0) return 'Click the map to place your first point';
+    return `${completedZoneCount} zone${completedZoneCount > 1 ? 's' : ''} saved — click the map to draw a new one`;
+  }
+  const count = activeZone.markers.length;
+  if (count <= 1) return 'Keep clicking to add more points';
+  if (count === 2) return 'Add 1 more point to close the zone';
   return 'Click the first point or press Close Zone to finish';
 }
 
-export function ZoneControls({ closeZone, clearZone, undoLast, isClosed, markerCount }: Props) {
+export function ZoneControls({ closeZone, clearAll, undoLast, activeZone, completedZoneCount }: Props) {
+  const hasAnything = completedZoneCount > 0 || activeZone !== null;
+
   return (
     <div style={{
       position: 'absolute',
@@ -30,29 +38,29 @@ export function ZoneControls({ closeZone, clearZone, undoLast, isClosed, markerC
       zIndex: 1,
     }}>
       <p style={{ margin: 0, fontSize: 13, color: '#374151' }}>
-        {statusMessage(markerCount, isClosed)}
+        {statusMessage(activeZone, completedZoneCount)}
       </p>
       <div style={{ display: 'flex', gap: 6 }}>
         <button
           onClick={closeZone}
-          disabled={isClosed || markerCount < 3}
+          disabled={!activeZone || activeZone.markers.length < 3}
           style={buttonStyle}
         >
           Close Zone
         </button>
         <button
           onClick={undoLast}
-          disabled={markerCount === 0}
+          disabled={!activeZone}
           style={buttonStyle}
         >
           Undo
         </button>
         <button
-          onClick={clearZone}
-          disabled={markerCount === 0}
+          onClick={clearAll}
+          disabled={!hasAnything}
           style={buttonStyle}
         >
-          Clear
+          Clear All
         </button>
       </div>
     </div>
