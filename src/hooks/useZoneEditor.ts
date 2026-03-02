@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import maplibregl from 'maplibre-gl';
-import { v4 as uuidv4 } from 'uuid';
-import type { Zone } from '../types/zone';
-import { findClosestSegmentIndex } from '../utils/geometry';
-import { LAYER_IDS, SOURCE_IDS } from '../constants/map';
+import { useState, useEffect, useRef, useCallback } from "react";
+import maplibregl from "maplibre-gl";
+import { v4 as uuidv4 } from "uuid";
+import type { Zone } from "../types/zone";
+import { findClosestSegmentIndex } from "../utils/geometry";
+import { LAYER_IDS, SOURCE_IDS } from "../constants/map";
 
 const CLOSE_PIXEL_THRESHOLD = 15;
 
@@ -16,12 +16,16 @@ export function useZoneEditor(map: maplibregl.Map | null) {
   const activeZoneIdRef = useRef<string | null>(activeZoneId);
   const edgeClickConsumedRef = useRef(false);
   const hoveredZoneIdRef = useRef<string | null>(null);
-  useEffect(() => { zonesRef.current = zones; }, [zones]);
-  useEffect(() => { activeZoneIdRef.current = activeZoneId; }, [activeZoneId]);
+  useEffect(() => {
+    zonesRef.current = zones;
+  }, [zones]);
+  useEffect(() => {
+    activeZoneIdRef.current = activeZoneId;
+  }, [activeZoneId]);
 
   // If the active zone was removed (e.g. all markers undone/deleted), clear activeZoneId
   useEffect(() => {
-    if (activeZoneId && !zones.some(z => z.id === activeZoneId)) {
+    if (activeZoneId && !zones.some((z) => z.id === activeZoneId)) {
       setActiveZoneId(null);
     }
   }, [zones, activeZoneId]);
@@ -37,14 +41,20 @@ export function useZoneEditor(map: maplibregl.Map | null) {
       }
       const currentZones = zonesRef.current;
       const activeId = activeZoneIdRef.current;
-      const activeZone = activeId ? currentZones.find(z => z.id === activeId) : null;
+      const activeZone = activeId
+        ? currentZones.find((z) => z.id === activeId)
+        : null;
 
       // If not drawing, check if click landed inside a different closed zone → select it
       if (!activeZone || activeZone.isClosed) {
-        const fillHits = map.queryRenderedFeatures(e.point, { layers: [LAYER_IDS.ZONE_FILL] });
+        const fillHits = map.queryRenderedFeatures(e.point, {
+          layers: [LAYER_IDS.ZONE_FILL],
+        });
         if (fillHits.length > 0) {
           const zoneId = fillHits[0].properties?.zoneId as string | undefined;
-          const zone = zoneId ? currentZones.find(z => z.id === zoneId) : null;
+          const zone = zoneId
+            ? currentZones.find((z) => z.id === zoneId)
+            : null;
           // Skip if this zone is already the active one — fall through to insert
           if (zone?.isClosed && zoneId && zoneId !== activeId) {
             setActiveZoneId(zoneId);
@@ -53,53 +63,91 @@ export function useZoneEditor(map: maplibregl.Map | null) {
         }
       }
 
+      // Resolve click coordinates — Ctrl/Cmd+click snaps to the nearest marker in any other zone
+      let clickLng = e.lngLat.lng;
+      let clickLat = e.lngLat.lat;
+      if (e.originalEvent.ctrlKey || e.originalEvent.metaKey) {
+        let minDist = Infinity;
+        for (const zone of currentZones) {
+          if (zone.id === activeId) continue;
+          for (const m of zone.markers) {
+            const px = map.project([m.lng, m.lat]);
+            const d = Math.hypot(e.point.x - px.x, e.point.y - px.y);
+            if (d < minDist) {
+              minDist = d;
+              clickLng = m.lng;
+              clickLat = m.lat;
+            }
+          }
+        }
+      }
+
       if (activeZone && !activeZone.isClosed) {
         // Drawing mode: close or append
-        if (activeZone.markers.length >= 3) {
+        // Skip close-zone check when Ctrl/Cmd is held (intent is to snap, not close)
+        if (!(e.originalEvent.ctrlKey || e.originalEvent.metaKey) && activeZone.markers.length >= 3) {
           const first = activeZone.markers[0];
           const firstPixel = map.project([first.lng, first.lat]);
           const dx = e.point.x - firstPixel.x;
           const dy = e.point.y - firstPixel.y;
           if (Math.sqrt(dx * dx + dy * dy) <= CLOSE_PIXEL_THRESHOLD) {
-            setZones(prev => prev.map(z =>
-              z.id === activeId ? { ...z, isClosed: true } : z,
-            ));
+            setZones((prev) =>
+              prev.map((z) =>
+                z.id === activeId ? { ...z, isClosed: true } : z,
+              ),
+            );
             setActiveZoneId(null);
             return;
           }
         }
         // Append marker to active zone
-        setZones(prev => prev.map(z =>
-          z.id === activeId
-            ? { ...z, markers: [...z.markers, { id: uuidv4(), lng: e.lngLat.lng, lat: e.lngLat.lat }] }
-            : z,
-        ));
+        setZones((prev) =>
+          prev.map((z) =>
+            z.id === activeId
+              ? {
+                  ...z,
+                  markers: [
+                    ...z.markers,
+                    { id: uuidv4(), lng: clickLng, lat: clickLat },
+                  ],
+                }
+              : z,
+          ),
+        );
       } else if (activeZone && activeZone.isClosed) {
         // Edit mode: insert new point at the closest segment
         const insertIndex = findClosestSegmentIndex(
           [...activeZone.markers, activeZone.markers[0]],
-          [e.lngLat.lng, e.lngLat.lat],
+          [clickLng, clickLat],
         );
-        setZones(prev => prev.map(z => {
-          if (z.id !== activeId) return z;
-          const updated = [...z.markers];
-          updated.splice(insertIndex + 1, 0, { id: uuidv4(), lng: e.lngLat.lng, lat: e.lngLat.lat });
-          return { ...z, markers: updated };
-        }));
+        setZones((prev) =>
+          prev.map((z) => {
+            if (z.id !== activeId) return z;
+            const updated = [...z.markers];
+            updated.splice(insertIndex + 1, 0, {
+              id: uuidv4(),
+              lng: clickLng,
+              lat: clickLat,
+            });
+            return { ...z, markers: updated };
+          }),
+        );
       } else {
         // No active zone: start a new one
         const newZone: Zone = {
           id: uuidv4(),
-          markers: [{ id: uuidv4(), lng: e.lngLat.lng, lat: e.lngLat.lat }],
+          markers: [{ id: uuidv4(), lng: clickLng, lat: clickLat }],
           isClosed: false,
         };
-        setZones(prev => [...prev, newZone]);
+        setZones((prev) => [...prev, newZone]);
         setActiveZoneId(newZone.id);
       }
     };
 
-    map.on('click', handleClick);
-    return () => { map.off('click', handleClick); };
+    map.on("click", handleClick);
+    return () => {
+      map.off("click", handleClick);
+    };
   }, [map]);
 
   // Line hit layer: insert point on a closed zone's edge + hover feedback
@@ -109,17 +157,20 @@ export function useZoneEditor(map: maplibregl.Map | null) {
     const handleLineClick = (e: maplibregl.MapLayerMouseEvent) => {
       const zoneId = e.features?.[0]?.properties?.zoneId as string | undefined;
       if (!zoneId) return;
-      const zone = zonesRef.current.find(z => z.id === zoneId);
+      const zone = zonesRef.current.find((z) => z.id === zoneId);
       if (!zone?.isClosed) return;
 
       edgeClickConsumedRef.current = true;
 
       // Clear hover state — setData (triggered by setZones) will wipe feature state
       if (hoveredZoneIdRef.current) {
-        map.setFeatureState({ source: SOURCE_IDS.ZONE, id: hoveredZoneIdRef.current }, { hover: false });
+        map.setFeatureState(
+          { source: SOURCE_IDS.ZONE, id: hoveredZoneIdRef.current },
+          { hover: false },
+        );
         hoveredZoneIdRef.current = null;
       }
-      map.getCanvas().style.cursor = '';
+      map.getCanvas().style.cursor = "";
 
       const clickCoord: [number, number] = [e.lngLat.lng, e.lngLat.lat];
       const insertIndex = findClosestSegmentIndex(
@@ -127,57 +178,72 @@ export function useZoneEditor(map: maplibregl.Map | null) {
         clickCoord,
       );
 
-      setZones(prev => prev.map(z => {
-        if (z.id !== zoneId) return z;
-        const updated = [...z.markers];
-        updated.splice(insertIndex + 1, 0, { id: uuidv4(), lng: e.lngLat.lng, lat: e.lngLat.lat });
-        return { ...z, markers: updated };
-      }));
+      setZones((prev) =>
+        prev.map((z) => {
+          if (z.id !== zoneId) return z;
+          const updated = [...z.markers];
+          updated.splice(insertIndex + 1, 0, {
+            id: uuidv4(),
+            lng: e.lngLat.lng,
+            lat: e.lngLat.lat,
+          });
+          return { ...z, markers: updated };
+        }),
+      );
     };
 
     const handleMouseEnter = (e: maplibregl.MapLayerMouseEvent) => {
       const zoneId = e.features?.[0]?.properties?.zoneId as string | undefined;
       if (!zoneId) return;
-      const zone = zonesRef.current.find(z => z.id === zoneId);
+      const zone = zonesRef.current.find((z) => z.id === zoneId);
       if (!zone?.isClosed) return;
 
-      map.getCanvas().style.cursor = 'pointer';
-      map.setFeatureState({ source: SOURCE_IDS.ZONE, id: zoneId }, { hover: true });
+      map.getCanvas().style.cursor = "pointer";
+      map.setFeatureState(
+        { source: SOURCE_IDS.ZONE, id: zoneId },
+        { hover: true },
+      );
       hoveredZoneIdRef.current = zoneId;
     };
 
     const handleMouseLeave = () => {
-      map.getCanvas().style.cursor = '';
+      map.getCanvas().style.cursor = "";
       if (hoveredZoneIdRef.current) {
-        map.setFeatureState({ source: SOURCE_IDS.ZONE, id: hoveredZoneIdRef.current }, { hover: false });
+        map.setFeatureState(
+          { source: SOURCE_IDS.ZONE, id: hoveredZoneIdRef.current },
+          { hover: false },
+        );
         hoveredZoneIdRef.current = null;
       }
     };
 
-    map.on('click', LAYER_IDS.ZONE_LINE_HIT, handleLineClick);
-    map.on('mouseenter', LAYER_IDS.ZONE_LINE_HIT, handleMouseEnter);
-    map.on('mouseleave', LAYER_IDS.ZONE_LINE_HIT, handleMouseLeave);
+    map.on("click", LAYER_IDS.ZONE_LINE_HIT, handleLineClick);
+    map.on("mouseenter", LAYER_IDS.ZONE_LINE_HIT, handleMouseEnter);
+    map.on("mouseleave", LAYER_IDS.ZONE_LINE_HIT, handleMouseLeave);
     return () => {
-      map.off('click', LAYER_IDS.ZONE_LINE_HIT, handleLineClick);
-      map.off('mouseenter', LAYER_IDS.ZONE_LINE_HIT, handleMouseEnter);
-      map.off('mouseleave', LAYER_IDS.ZONE_LINE_HIT, handleMouseLeave);
+      map.off("click", LAYER_IDS.ZONE_LINE_HIT, handleLineClick);
+      map.off("mouseenter", LAYER_IDS.ZONE_LINE_HIT, handleMouseEnter);
+      map.off("mouseleave", LAYER_IDS.ZONE_LINE_HIT, handleMouseLeave);
     };
   }, [map]);
-
 
   const closeZone = useCallback(() => {
     const activeId = activeZoneIdRef.current;
     if (!activeId) return;
-    setZones(prev => prev.map(z =>
-      z.id === activeId && z.markers.length >= 3 ? { ...z, isClosed: true } : z,
-    ));
+    setZones((prev) =>
+      prev.map((z) =>
+        z.id === activeId && z.markers.length >= 3
+          ? { ...z, isClosed: true }
+          : z,
+      ),
+    );
     setActiveZoneId(null);
   }, []);
 
   const deleteMarker = useCallback((id: string) => {
-    setZones(prev =>
+    setZones((prev) =>
       prev.reduce<Zone[]>((acc, z) => {
-        if (!z.markers.some(m => m.id === id)) {
+        if (!z.markers.some((m) => m.id === id)) {
           acc.push(z);
           return acc;
         }
@@ -186,9 +252,13 @@ export function useZoneEditor(map: maplibregl.Map | null) {
           acc.push(z);
           return acc;
         }
-        const next = z.markers.filter(m => m.id !== id);
+        const next = z.markers.filter((m) => m.id !== id);
         if (next.length === 0) return acc; // remove empty zone
-        acc.push({ ...z, markers: next, isClosed: next.length < 3 ? false : z.isClosed });
+        acc.push({
+          ...z,
+          markers: next,
+          isClosed: next.length < 3 ? false : z.isClosed,
+        });
         return acc;
       }, []),
     );
@@ -199,11 +269,11 @@ export function useZoneEditor(map: maplibregl.Map | null) {
     setActiveZoneId(null);
   }, []);
 
-const onMarkerDrag = useCallback((id: string, lng: number, lat: number) => {
-    setZones(prev =>
-      prev.map(z => ({
+  const onMarkerDrag = useCallback((id: string, lng: number, lat: number) => {
+    setZones((prev) =>
+      prev.map((z) => ({
         ...z,
-        markers: z.markers.map(m => m.id === id ? { ...m, lng, lat } : m),
+        markers: z.markers.map((m) => (m.id === id ? { ...m, lng, lat } : m)),
       })),
     );
   }, []);
