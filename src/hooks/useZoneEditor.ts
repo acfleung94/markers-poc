@@ -15,6 +15,7 @@ export function useZoneEditor(map: maplibregl.Map | null) {
   const zonesRef = useRef<Zone[]>(zones);
   const activeZoneIdRef = useRef<string | null>(activeZoneId);
   const edgeClickConsumedRef = useRef(false);
+  const snapKeyHeldRef = useRef(false);  // true while Ctrl (Win/Linux) or Cmd (Mac) is held
   const hoveredZoneIdRef = useRef<string | null>(null);
   useEffect(() => {
     zonesRef.current = zones;
@@ -22,6 +23,23 @@ export function useZoneEditor(map: maplibregl.Map | null) {
   useEffect(() => {
     activeZoneIdRef.current = activeZoneId;
   }, [activeZoneId]);
+
+  // Track snap modifier key (Ctrl on Win/Linux, Cmd/Meta on Mac) via window listeners
+  // — more reliable than reading e.originalEvent.metaKey inside MapLibre's click event
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Meta') snapKeyHeldRef.current = true;
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Meta') snapKeyHeldRef.current = false;
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, []);
 
   // If the active zone was removed (e.g. all markers undone/deleted), clear activeZoneId
   useEffect(() => {
@@ -66,7 +84,7 @@ export function useZoneEditor(map: maplibregl.Map | null) {
       // Resolve click coordinates — Ctrl/Cmd+click snaps to the nearest marker in any other zone
       let clickLng = e.lngLat.lng;
       let clickLat = e.lngLat.lat;
-      if (e.originalEvent.ctrlKey || e.originalEvent.metaKey) {
+      if (snapKeyHeldRef.current) {
         let minDist = Infinity;
         for (const zone of currentZones) {
           if (zone.id === activeId) continue;
@@ -85,7 +103,7 @@ export function useZoneEditor(map: maplibregl.Map | null) {
       if (activeZone && !activeZone.isClosed) {
         // Drawing mode: close or append
         // Skip close-zone check when Ctrl/Cmd is held (intent is to snap, not close)
-        if (!(e.originalEvent.ctrlKey || e.originalEvent.metaKey) && activeZone.markers.length >= 3) {
+        if (!(snapKeyHeldRef.current) && activeZone.markers.length >= 3) {
           const first = activeZone.markers[0];
           const firstPixel = map.project([first.lng, first.lat]);
           const dx = e.point.x - firstPixel.x;
