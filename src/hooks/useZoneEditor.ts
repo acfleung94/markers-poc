@@ -181,6 +181,11 @@ export function useZoneEditor(map: maplibregl.Map | null) {
           acc.push(z);
           return acc;
         }
+        // Only allow deletion from the currently active zone
+        if (z.id !== activeZoneIdRef.current) {
+          acc.push(z);
+          return acc;
+        }
         const next = z.markers.filter(m => m.id !== id);
         if (next.length === 0) return acc; // remove empty zone
         acc.push({ ...z, markers: next, isClosed: next.length < 3 ? false : z.isClosed });
