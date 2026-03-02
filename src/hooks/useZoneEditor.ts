@@ -63,8 +63,8 @@ export function useZoneEditor(map: maplibregl.Map | null) {
         ? currentZones.find((z) => z.id === activeId)
         : null;
 
-      // If not drawing, check if click landed inside a different closed zone → select it
-      if (!activeZone || activeZone.isClosed) {
+      // Only select a zone when there is no active zone — never switch mid-edit
+      if (!activeZone) {
         const fillHits = map.queryRenderedFeatures(e.point, {
           layers: [LAYER_IDS.ZONE_FILL],
         });
