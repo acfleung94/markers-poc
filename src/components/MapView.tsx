@@ -14,7 +14,6 @@ export function MapView() {
     closeZone,
     deleteMarker,
     clearAll,
-    undoLast,
     onMarkerDrag,
   } = useZoneEditor(map);
 
@@ -37,7 +36,6 @@ export function MapView() {
           <ZoneControls
             closeZone={closeZone}
             clearAll={clearAll}
-            undoLast={undoLast}
             activeZone={activeZone}
             completedZoneCount={completedZoneCount}
           />

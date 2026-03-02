@@ -194,21 +194,7 @@ export function useZoneEditor(map: maplibregl.Map | null) {
     setActiveZoneId(null);
   }, []);
 
-  const undoLast = useCallback(() => {
-    const activeId = activeZoneIdRef.current;
-    if (!activeId) return;
-    setZones(prev =>
-      prev.reduce<Zone[]>((acc, z) => {
-        if (z.id !== activeId) { acc.push(z); return acc; }
-        const next = z.markers.slice(0, -1);
-        if (next.length === 0) return acc; // remove empty zone
-        acc.push({ ...z, markers: next, isClosed: next.length < 3 ? false : z.isClosed });
-        return acc;
-      }, []),
-    );
-  }, []);
-
-  const onMarkerDrag = useCallback((id: string, lng: number, lat: number) => {
+const onMarkerDrag = useCallback((id: string, lng: number, lat: number) => {
     setZones(prev =>
       prev.map(z => ({
         ...z,
@@ -223,7 +209,6 @@ export function useZoneEditor(map: maplibregl.Map | null) {
     closeZone,
     deleteMarker,
     clearAll,
-    undoLast,
     onMarkerDrag,
   };
 }

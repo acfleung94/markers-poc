@@ -3,7 +3,6 @@ import type { Zone } from '../types/zone';
 interface Props {
   closeZone: () => void;
   clearAll: () => void;
-  undoLast: () => void;
   activeZone: Zone | null;
   completedZoneCount: number;
 }
@@ -22,7 +21,7 @@ function statusMessage(activeZone: Zone | null, completedZoneCount: number): str
   return 'Click the first point or press Close Zone to finish';
 }
 
-export function ZoneControls({ closeZone, clearAll, undoLast, activeZone, completedZoneCount }: Props) {
+export function ZoneControls({ closeZone, clearAll, activeZone, completedZoneCount }: Props) {
   const hasAnything = completedZoneCount > 0 || activeZone !== null;
 
   return (
@@ -51,14 +50,7 @@ export function ZoneControls({ closeZone, clearAll, undoLast, activeZone, comple
         >
           Close Zone
         </button>
-        <button
-          onClick={undoLast}
-          disabled={!activeZone}
-          style={buttonStyle}
-        >
-          Undo
-        </button>
-        <button
+<button
           onClick={clearAll}
           disabled={!hasAnything}
           style={buttonStyle}
