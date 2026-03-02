@@ -108,8 +108,22 @@ export function useZoneEditor(map: maplibregl.Map | null) {
       });
     };
 
+    // Cursor feedback: show pointer when hovering the line on a closed zone
+    const handleMouseEnter = () => {
+      if (isClosedRef.current) map.getCanvas().style.cursor = 'pointer';
+    };
+    const handleMouseLeave = () => {
+      map.getCanvas().style.cursor = '';
+    };
+
     map.on('click', LAYER_IDS.ZONE_LINE, handleLineClick);
-    return () => { map.off('click', LAYER_IDS.ZONE_LINE, handleLineClick); };
+    map.on('mouseenter', LAYER_IDS.ZONE_LINE, handleMouseEnter);
+    map.on('mouseleave', LAYER_IDS.ZONE_LINE, handleMouseLeave);
+    return () => {
+      map.off('click', LAYER_IDS.ZONE_LINE, handleLineClick);
+      map.off('mouseenter', LAYER_IDS.ZONE_LINE, handleMouseEnter);
+      map.off('mouseleave', LAYER_IDS.ZONE_LINE, handleMouseLeave);
+    };
   }, [map]);
 
   const closeZone = useCallback(() => {

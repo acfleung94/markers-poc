@@ -17,7 +17,7 @@ function createMarkerElement(isFirst: boolean): HTMLDivElement {
     'border-radius: 50%',
     `background: ${isFirst ? '#ef4444' : '#2563eb'}`,
     'border: 2px solid white',
-    'cursor: grab',
+    'cursor: pointer',
     'box-shadow: 0 1px 3px rgba(0,0,0,0.3)',
     'box-sizing: border-box',
   ].join(';');
@@ -62,6 +62,7 @@ export function MarkerLayer({ map, markers, deleteMarker, onMarkerDrag }: Props)
       });
 
       // Drag: update GeoJSON live
+      marker.on('dragstart', () => { el.style.cursor = 'grabbing'; });
       marker.on('drag', () => {
         const { lng, lat } = marker.getLngLat();
         onMarkerDrag(markerData.id, lng, lat);
@@ -69,6 +70,7 @@ export function MarkerLayer({ map, markers, deleteMarker, onMarkerDrag }: Props)
 
       // Dragend: commit final position to state
       marker.on('dragend', () => {
+        el.style.cursor = 'pointer';
         const { lng, lat } = marker.getLngLat();
         onMarkerDrag(markerData.id, lng, lat);
       });
