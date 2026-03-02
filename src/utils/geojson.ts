@@ -46,19 +46,21 @@ export function buildPointsFeatureCollection(
   };
 }
 
-export function buildZonesGeoJSON(zones: Zone[]): GeoJSON.FeatureCollection {
+export function buildZonesGeoJSON(zones: Zone[], activeZoneId?: string | null): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
 
   for (const zone of zones) {
+    const isActive = zone.id === activeZoneId;
+
     const line = buildLineFeature(zone.markers, zone.isClosed);
     if (line) {
-      features.push({ ...line, id: zone.id, properties: { zoneId: zone.id } });
+      features.push({ ...line, id: zone.id, properties: { zoneId: zone.id, isActive } });
     }
 
     if (zone.isClosed) {
       const polygon = buildPolygonFeature(zone.markers);
       if (polygon) {
-        features.push({ ...polygon, id: zone.id, properties: { zoneId: zone.id } });
+        features.push({ ...polygon, id: zone.id, properties: { zoneId: zone.id, isActive } });
       }
     }
 
@@ -66,7 +68,7 @@ export function buildZonesGeoJSON(zones: Zone[]): GeoJSON.FeatureCollection {
       features.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [m.lng, m.lat] },
-        properties: { id: m.id, zoneId: zone.id },
+        properties: { id: m.id, zoneId: zone.id, isActive },
       });
     }
   }

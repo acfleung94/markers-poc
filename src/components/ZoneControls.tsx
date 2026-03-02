@@ -13,6 +13,9 @@ function statusMessage(activeZone: Zone | null, completedZoneCount: number): str
     if (completedZoneCount === 0) return 'Click the map to place your first point';
     return `${completedZoneCount} zone${completedZoneCount > 1 ? 's' : ''} saved — click the map to draw a new one`;
   }
+  if (activeZone.isClosed) {
+    return 'Editing zone — click anywhere to insert points, or press Close Zone to finish';
+  }
   const count = activeZone.markers.length;
   if (count <= 1) return 'Keep clicking to add more points';
   if (count === 2) return 'Add 1 more point to close the zone';

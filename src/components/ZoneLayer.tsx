@@ -7,9 +7,10 @@ import { buildZonesGeoJSON } from '../utils/geojson';
 interface Props {
   map: maplibregl.Map | null;
   zones: Zone[];
+  activeZoneId: string | null;
 }
 
-export function ZoneLayer({ map, zones }: Props) {
+export function ZoneLayer({ map, zones, activeZoneId }: Props) {
   // Effect 1: register source and layers once when map becomes available
   useEffect(() => {
     if (!map) return;
@@ -26,7 +27,7 @@ export function ZoneLayer({ map, zones }: Props) {
       filter: ['==', '$type', 'Polygon'],
       paint: {
         'fill-color': '#3b82f6',
-        'fill-opacity': 0.2,
+        'fill-opacity': ['case', ['boolean', ['get', 'isActive'], false], 0.35, 0.2],
       },
     });
 
@@ -36,9 +37,13 @@ export function ZoneLayer({ map, zones }: Props) {
       source: SOURCE_IDS.ZONE,
       filter: ['==', '$type', 'LineString'],
       paint: {
-        // Colour driven by feature state so only the hovered zone highlights
-        'line-color': ['case', ['boolean', ['feature-state', 'hover'], false], '#f97316', '#2563eb'],
-        'line-width': 2,
+        // hover (feature state) > active (property) > default
+        'line-color': ['case',
+          ['boolean', ['feature-state', 'hover'], false], '#f97316',
+          ['boolean', ['get', 'isActive'], false], '#1d4ed8',
+          '#2563eb',
+        ],
+        'line-width': ['case', ['boolean', ['get', 'isActive'], false], 3, 2],
       },
     });
 
@@ -74,13 +79,13 @@ export function ZoneLayer({ map, zones }: Props) {
     };
   }, [map]);
 
-  // Effect 2: update source data whenever zones change
+  // Effect 2: update source data whenever zones or active zone change
   useEffect(() => {
     if (!map) return;
     const source = map.getSource(SOURCE_IDS.ZONE) as maplibregl.GeoJSONSource | undefined;
     if (!source) return;
-    source.setData(buildZonesGeoJSON(zones));
-  }, [map, zones]);
+    source.setData(buildZonesGeoJSON(zones, activeZoneId));
+  }, [map, zones, activeZoneId]);
 
   return null;
 }

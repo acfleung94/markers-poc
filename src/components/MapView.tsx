@@ -26,7 +26,7 @@ export function MapView() {
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       {isLoaded && (
         <>
-          <ZoneLayer map={map} zones={zones} />
+          <ZoneLayer map={map} zones={zones} activeZoneId={activeZoneId} />
           <MarkerLayer
             map={map}
             zones={zones}
