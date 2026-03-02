@@ -108,21 +108,24 @@ export function useZoneEditor(map: maplibregl.Map | null) {
       });
     };
 
-    // Cursor feedback: show pointer when hovering the line on a closed zone
+    // Cursor + line highlight feedback when hovering the line on a closed zone
     const handleMouseEnter = () => {
-      if (isClosedRef.current) map.getCanvas().style.cursor = 'pointer';
+      if (!isClosedRef.current) return;
+      map.getCanvas().style.cursor = 'pointer';
+      map.setPaintProperty(LAYER_IDS.ZONE_LINE, 'line-color', '#f97316');
     };
     const handleMouseLeave = () => {
       map.getCanvas().style.cursor = '';
+      map.setPaintProperty(LAYER_IDS.ZONE_LINE, 'line-color', '#2563eb');
     };
 
-    map.on('click', LAYER_IDS.ZONE_LINE, handleLineClick);
-    map.on('mouseenter', LAYER_IDS.ZONE_LINE, handleMouseEnter);
-    map.on('mouseleave', LAYER_IDS.ZONE_LINE, handleMouseLeave);
+    map.on('click', LAYER_IDS.ZONE_LINE_HIT, handleLineClick);
+    map.on('mouseenter', LAYER_IDS.ZONE_LINE_HIT, handleMouseEnter);
+    map.on('mouseleave', LAYER_IDS.ZONE_LINE_HIT, handleMouseLeave);
     return () => {
-      map.off('click', LAYER_IDS.ZONE_LINE, handleLineClick);
-      map.off('mouseenter', LAYER_IDS.ZONE_LINE, handleMouseEnter);
-      map.off('mouseleave', LAYER_IDS.ZONE_LINE, handleMouseLeave);
+      map.off('click', LAYER_IDS.ZONE_LINE_HIT, handleLineClick);
+      map.off('mouseenter', LAYER_IDS.ZONE_LINE_HIT, handleMouseEnter);
+      map.off('mouseleave', LAYER_IDS.ZONE_LINE_HIT, handleMouseLeave);
     };
   }, [map]);
 

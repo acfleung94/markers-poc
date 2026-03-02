@@ -5,6 +5,7 @@ export const DEFAULT_ZOOM = 12;
 export const LAYER_IDS = {
   ZONE_FILL: 'zone-fill',
   ZONE_LINE: 'zone-line',
+  ZONE_LINE_HIT: 'zone-line-hit', // wider transparent layer for easier click/hover targeting
   ZONE_POINTS: 'zone-points',
 } as const;
 

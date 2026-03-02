@@ -47,6 +47,17 @@ export function ZoneLayer({ map, lineFeature, polygonFeature, pointsFeature }: P
     });
 
     map.addLayer({
+      id: LAYER_IDS.ZONE_LINE_HIT,
+      type: 'line',
+      source: SOURCE_IDS.ZONE,
+      filter: ['==', '$type', 'LineString'],
+      paint: {
+        'line-color': 'transparent',
+        'line-width': 20,
+      },
+    });
+
+    map.addLayer({
       id: LAYER_IDS.ZONE_POINTS,
       type: 'circle',
       source: SOURCE_IDS.ZONE,
@@ -60,6 +71,7 @@ export function ZoneLayer({ map, lineFeature, polygonFeature, pointsFeature }: P
 
     return () => {
       if (map.getLayer(LAYER_IDS.ZONE_POINTS)) map.removeLayer(LAYER_IDS.ZONE_POINTS);
+      if (map.getLayer(LAYER_IDS.ZONE_LINE_HIT)) map.removeLayer(LAYER_IDS.ZONE_LINE_HIT);
       if (map.getLayer(LAYER_IDS.ZONE_LINE)) map.removeLayer(LAYER_IDS.ZONE_LINE);
       if (map.getLayer(LAYER_IDS.ZONE_FILL)) map.removeLayer(LAYER_IDS.ZONE_FILL);
       if (map.getSource(SOURCE_IDS.ZONE)) map.removeSource(SOURCE_IDS.ZONE);
